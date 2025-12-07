@@ -18,6 +18,7 @@ Option Explicit 'om 2025-11-30 lines: 410; 2025-12-04 lines: 464;
 Private m_Col       As Collection 'Of Object/Variant
 Private m_IsHashed  As Boolean
 Private m_Version   As Variant 'Decimal 'Incremented in every Add, Insert or Delete
+Private m_SortDirUp As Boolean
 
 Private Sub Class_Initialize()
     Set m_Col = New Collection
@@ -166,8 +167,9 @@ Public Sub Insert(ByVal Index As Long, ValueOrObj)
     'insert always means "Befor" the Index
     'you can insert before the first element to get a new first element
     'if you want to insert after the last element just use Add
-    m_Col.Add ValueOrObj, , Index
-    m_Version = m_Version + CDec(1)
+    Me.Add ValueOrObj, , Index
+    'm_Col.Add ValueOrObj, , Index
+    'm_Version = m_Version + CDec(1)
 End Sub
 
 Public Property Get Item(IndexOrKey)
@@ -203,6 +205,7 @@ Public Property Set Item(IndexOrKey, ValueOrObj As Object)
 End Property
 
 Public Sub MoveUp(ByVal i As Long)
+    If m_IsHashed Then MoveUpKey i: Exit Sub
     Dim c As Long: c = m_Col.Count
     If i <= 1 Or c < i Then Exit Sub
     SwapItems i, i - 1
@@ -223,9 +226,11 @@ Public Sub MoveUpKey(ByVal i As Long)
 End Sub
 
 Public Sub MoveDown(ByVal i As Long)
+    If m_IsHashed Then MoveDownKey i: Exit Sub
     Dim c As Long: c = m_Col.Count
     If i < 1 Or c <= i Then Exit Sub
     SwapItems i, i + 1
+    m_Version = m_Version + CDec(1)
 End Sub
 
 Public Sub MoveDownKey(ByVal i As Long)
@@ -238,6 +243,7 @@ Public Sub MoveDownKey(ByVal i As Long)
     Dim Key1 As String: Key1 = Obj1.Key
     Dim Key2 As String: Key2 = Obj2.Key
     SwapItemsKey i1, Key1, i2, Key2
+    m_Version = m_Version + CDec(1)
 End Sub
 
 Public Function Remove(IndexOrKey)
@@ -255,8 +261,14 @@ Public Sub SwapItems(ByVal i1 As Long, ByVal i2 As Long)
     If i1 = i2 Then Exit Sub
     Dim Obj1: If IsObject(m_Col.Item(i1)) Then Set Obj1 = m_Col.Item(i1) Else Obj1 = m_Col.Item(i1)
     Dim Obj2: If IsObject(m_Col.Item(i2)) Then Set Obj2 = m_Col.Item(i2) Else Obj2 = m_Col.Item(i2)
-    m_Col.Remove i1: m_Col.Add Obj2, , i1:   m_Col.Remove i2
-    If i2 < c Then m_Col.Add Obj1, , i2 Else m_Col.Add Obj1
+    m_Col.Remove i1:
+    m_Col.Add Obj2, , i1
+    m_Col.Remove i2
+    If i2 < c Then
+        m_Col.Add Obj1, , i2
+    Else
+        m_Col.Add Obj1
+    End If
     m_Version = m_Version + CDec(1)
 End Sub
 
@@ -276,11 +288,11 @@ Public Sub SwapItemsKey(ByVal i1 As Long, ByVal Key1 As String, _
 End Sub
 
 Public Sub ToListBox(aLB As ListBox, Optional ByVal addEmptyLineFirst As Boolean = False, Optional ByVal doPtrToItemData As Boolean = False)
-    ToListCtrl aLB, addEmptyLineFirst
+    ToListCtrl aLB, addEmptyLineFirst, doPtrToItemData
 End Sub
 
 Public Sub ToComboBox(aCB As ComboBox, Optional ByVal addEmptyLineFirst As Boolean = False, Optional ByVal doPtrToItemData As Boolean = False)
-    ToListCtrl aCB, addEmptyLineFirst
+    ToListCtrl aCB, addEmptyLineFirst, doPtrToItemData
 End Sub
 
 Public Sub ToListCtrl(ComboBoxOrListBox, Optional ByVal addEmptyLineFirst As Boolean = False, Optional ByVal doPtrToItemData As Boolean = False)
@@ -332,7 +344,8 @@ Public Property Get Version() As Variant 'As Decimal
 End Property
 
 ' Sort:
-Public Sub Sort()
+Public Sub Sort(Optional SortDirectionDown As Boolean = False)
+    m_SortDirUp = Not SortDirectionDown
     'Set m_Col = Col
     Dim c As Long: c = m_Col.Count
     'If c = 0 Then: Set m_Col = Nothing: Exit Sub
@@ -377,7 +390,12 @@ Private Function DivideVar(ByVal i1 As Long, ByVal i2 As Long) As Long
 End Function
 
 Private Function CompareVar(ByVal i1 As Long, ByVal i2 As Long) As Variant
-    CompareVar = m_Col.Item(i1) - m_Col.Item(i2)
+    If m_SortDirUp Then
+        CompareVar = m_Col.Item(i1) - m_Col.Item(i2)
+    Else
+        'Dim t As Long: t = i1: i1 = i2: i2 = t
+        CompareVar = m_Col.Item(i2) - m_Col.Item(i1)
+    End If
 End Function
 
 Private Sub SwapVar(ByVal i1 As Long, ByVal i2 As Long)
@@ -418,7 +436,11 @@ Private Function DivideStr(ByVal i1 As Long, ByVal i2 As Long) As Long
 End Function
 
 Private Function CompareStr(ByVal i1 As Long, ByVal i2 As Long)
-    CompareStr = StrComp(m_Col.Item(i1), m_Col.Item(i2))
+    If m_SortDirUp Then
+        CompareStr = StrComp(m_Col.Item(i1), m_Col.Item(i2))
+    Else
+        CompareStr = StrComp(m_Col.Item(i2), m_Col.Item(i1))
+    End If
     'Dim Str1 As String: Str1 = m_col.Item(i1)
     'Dim Str2 As String: Str2 = m_col.Item(i2)
     'CompareStr = StrComp(Str1, Str2)
@@ -464,7 +486,11 @@ End Function
 Private Function CompareObj(ByVal i1 As Long, ByVal i2 As Long) As Long
     Dim Obj1 As Object: Set Obj1 = m_Col.Item(i1)
     Dim Obj2 As Object: Set Obj2 = m_Col.Item(i2)
-    CompareObj = Obj1.Compare(Obj2)
+    If m_SortDirUp Then
+        CompareObj = Obj1.Compare(Obj2)
+    Else
+        CompareObj = Obj2.Compare(Obj1)
+    End If
 End Function
 
 Private Sub SwapObj(ByVal i1 As Long, ByVal i2 As Long)
@@ -473,6 +499,37 @@ Private Sub SwapObj(ByVal i1 As Long, ByVal i2 As Long)
     If i2 < i1 Then: Dim i_tmp As Long: i_tmp = i1: i1 = i2: i2 = i_tmp
     Dim Obj1 As Object: Set Obj1 = m_Col.Item(i1)
     Dim Obj2 As Object: Set Obj2 = m_Col.Item(i2)
-    m_Col.Remove i1: m_Col.Add Obj2, , i1:   m_Col.Remove i2
-    If i2 < c Then m_Col.Add Obj1, , i2 Else m_Col.Add Obj1
+    If m_IsHashed Then
+        
+        Dim Key1 As String: Key1 = Obj1.Key
+        Dim Key2 As String: Key2 = Obj2.Key
+        Me.SwapItemsKey i1, Key1, i2, Key2
+        
+        m_Col.Remove Key2
+        m_Col.Add Obj2, Key2, i1
+        
+        m_Col.Remove Key1
+        If i2 < c Then m_Col.Add Obj1, Key1, i2 Else m_Col.Add Obj1, Key1
+    Else
+        m_Col.Remove i1: m_Col.Add Obj2, , i1:   m_Col.Remove i2
+        If i2 < c Then m_Col.Add Obj1, , i2 Else m_Col.Add Obj1
+    End If
+    
 End Sub
+
+'Public Sub SwapItemsKey(ByVal i1 As Long, ByVal Key1 As String, _
+'                        ByVal i2 As Long, ByVal Key2 As String)
+'    Dim c As Long: c = m_Col.Count
+'    If c = 0 Then Exit Sub
+'    If i2 < i1 Then: Dim i_tmp As Long: i_tmp = i1: i1 = i2: i2 = i_tmp
+'    If i1 <= 0 Or c <= i1 Then Exit Sub
+'    If i2 <= 0 Or c < i2 Then Exit Sub
+'    If i1 = i2 Then Exit Sub
+'    Dim Obj1: If IsObject(m_Col.Item(Key1)) Then Set Obj1 = m_Col.Item(Key1) Else Obj1 = m_Col.Item(Key1)
+'    Dim Obj2: If IsObject(m_Col.Item(Key2)) Then Set Obj2 = m_Col.Item(Key2) Else Obj2 = m_Col.Item(Key2)
+'    m_Col.Remove Key2: m_Col.Add Obj2, Key2, i1
+'    m_Col.Remove Key1: m_Col.Add Obj1, Key1, i1
+'    m_Version = m_Version + CDec(1)
+'End Sub
+
+
