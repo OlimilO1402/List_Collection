@@ -12,9 +12,11 @@ Attribute VB_Creatable = True
 Attribute VB_PredeclaredId = False
 Attribute VB_Exposed = False
 Option Explicit 'om 2025-11-30 lines: 410; 2025-12-04 lines: 464;
-'the Collection is 1-based
-'class CCollection : replaces and extends the vb intrinsic-Collection with new additional functions
+'Class CCollection : replaces and extends the vb intrinsic-Collection with new additional functions
+'works as a wrapper class for your Collections, is fully compatible to your existing Code
+'the VB-Collection is 1-based and so is CCollection as we do not break with compatibility
 'Implements Collection 'nope
+Private m_Name      As String
 Private m_Col       As Collection 'Of Object/Variant
 Private m_IsHashed  As Boolean
 Private m_Version   As Variant 'Decimal 'Incremented in every Add, Insert or Delete
@@ -24,20 +26,22 @@ Private Sub Class_Initialize()
     Set m_Col = New Collection
 End Sub
 
-Friend Sub New_(IsHashed As Boolean, Optional Col As Collection = Nothing)
-    m_IsHashed = IsHashed: If Not Col Is Nothing Then Set m_Col = Col
+Friend Sub New_(IsHashed As Boolean, Optional Col As Collection = Nothing, Optional Name As String = "")
+    'works as a wrapper and extends existing Collection
+    m_Name = Name: m_IsHashed = IsHashed: If Not Col Is Nothing Then Set m_Col = Col
 End Sub
 
 'Copy to MNew
-'Public Function CCollection(ByVal IsHashed As Boolean, Optional Col As Collection = Nothing) As CCollection
-'    Set CCollection = New CCollection: CCollection.New_ IsHashed, Col
+'Public Function CCollection(ByVal IsHashed As Boolean, Optional Col As Collection = Nothing, Optional Name As String = "") As CCollection
+'    Set CCollection = New CCollection: CCollection.New_ IsHashed, Col, Name
 'End Function
 
 Public Sub NewC(other As CCollection)
     Dim i As Long
     With other
-        For i = 1 To other.Count
-            m_Col.Add other.Item(i)
+        m_Name = .Name
+        For i = 1 To .Count
+            m_Col.Add .Item(i)
         Next
     End With
 End Sub
@@ -47,10 +51,64 @@ Public Function Clone() As CCollection
     Set Clone = New CCollection: Clone.NewC Me
 End Function
 
+Public Function Compare(other As CCollection) As Long
+    Compare = StrComp(Me.Name, other.Name, vbBinaryCompare)
+End Function
+
+Public Property Get Name() As String
+    Name = m_Name
+End Property
+Public Property Let Name(ByVal Value As String)
+    m_Name = Value
+End Property
+
+Public Function Equals(other As CCollection) As Boolean
+    If Not other.Count = Me.Count Then Exit Function
+    Dim i As Long
+    For i = 1 To m_Col.Count
+        If m_Col.Item(i) <> other.Item(i) Then Exit Function
+    Next
+    Equals = True
+End Function
+
+Public Property Get Ptr()
+    Ptr = ObjPtr(Me)
+End Property
+
+Public Property Get Key() As String
+    If Len(m_Name) Then Key = Me.Name Else Key = Me.Ptr
+End Property
+
 Public Property Get DataType() As VbVarType
     If m_Col.Count = 0 Then Exit Property
     DataType = VarType(m_Col.Item(1))
 End Property
+
+Private Function DataType_ToStr(ByVal vt As VbVarType) As String
+    Dim s As String
+    Select Case vt
+    Case VbVarType.vbArray:           s = "Array"
+    Case VbVarType.vbBoolean:         s = "Boolean"
+    Case VbVarType.vbByte:            s = "Byte"
+    Case VbVarType.vbCurrency:        s = "Currency"
+    Case VbVarType.vbDataObject:      s = "DataObject"
+    Case VbVarType.vbDate:            s = "Date"
+    Case VbVarType.vbDecimal:         s = "Decimal"
+    Case VbVarType.vbDouble:          s = "Double"
+    Case VbVarType.vbEmpty:           s = "Empty"
+    Case VbVarType.vbError:           s = "Error"
+    Case VbVarType.vbInteger:         s = "Integer"
+    Case VbVarType.vbLong:            s = "Long"
+    Case VbVarType.vbNull:            s = "Null"
+    Case VbVarType.vbObject:  Dim Obj As Object: Set Obj = m_Col.Item(1)
+                                      s = "Object(" & TypeName(Obj) & ")"
+    Case VbVarType.vbSingle:          s = "Single"
+    Case VbVarType.vbString:          s = "String"
+    Case VbVarType.vbUserDefinedType: s = "UserDefinedType"
+    Case VbVarType.vbVariant:         s = "Variant"
+    End Select
+    DataType_ToStr = s
+End Function
 
 Public Function Add(Item, Optional Key, Optional Before, Optional After)
     If IsObject(Item) Then
@@ -326,17 +384,21 @@ Public Property Get ObjectFromListCtrl(ComboBoxOrListBox, ByRef i_out As Long) A
     If Contains(Key) Then Set ObjectFromListCtrl = m_Col.Item(Key)
 End Property
 
-Public Function ToStr(Col As Collection) As String
-    Dim s As String, v, o As Object
-    For Each v In Col
+Public Function ToStr() As String
+    ToStr = TypeName(Me) & "(Of " & DataType_ToStr(Me.DataType) & ")" & " " & m_Name
+End Function
+
+Public Function Data_ToStr() As String 'Col As Collection) As String
+    Dim s As String, v, Obj As Object
+    For Each v In m_Col
         If IsObject(v) Then
-            Set o = v
-            s = s & o.ToStr & vbCrLf
+            Set Obj = v
+            s = s & Obj.ToStr & vbCrLf
         Else
             s = s & CStr(v) & vbCrLf
         End If
     Next
-    ToStr = s
+    Data_ToStr = s
 End Function
 
 Public Property Get Version() As Variant 'As Decimal
