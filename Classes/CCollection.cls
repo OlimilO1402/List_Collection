@@ -384,7 +384,9 @@ Public Property Get ObjectFromListCtrl(ComboBoxOrListBox, ByRef i_out As Long) A
     If Contains(Key) Then Set ObjectFromListCtrl = m_Col.Item(Key)
 End Property
 
-Public Function ToStr() As String
+Public Function ToStr(Optional ByVal isLong As Boolean = False) As String
+    ToStr = m_Name
+    If Not isLong Then Exit Function
     ToStr = TypeName(Me) & "(Of " & DataType_ToStr(Me.DataType) & ")" & " " & m_Name
 End Function
 
