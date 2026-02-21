@@ -62,6 +62,14 @@ Public Property Let Name(ByVal Value As String)
     m_Name = Value
 End Property
 
+Public Function Find(Text As String) As CCollection
+    Set Find = MNew.CCollection(Me.IsHashed)
+    Dim Obj As Object
+    For Each Obj In m_Col
+        If Obj.Find(Text) Then Find.Add Obj
+    Next
+End Function
+
 Public Function Equals(other As CCollection) As Boolean
     If Not other.Count = Me.Count Then Exit Function
     Dim i As Long
