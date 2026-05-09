@@ -20,15 +20,17 @@ Private m_Name      As String
 Private m_Col       As Collection 'Of Object/Variant
 Private m_IsHashed  As Boolean
 Private m_Version   As Variant 'Decimal 'Incremented in every Add, Insert or Delete
+Private m_LowB      As Long
 Private m_SortDirUp As Boolean
 
 Private Sub Class_Initialize()
     Set m_Col = New Collection
 End Sub
 
-Friend Sub New_(IsHashed As Boolean, Optional Col As Collection = Nothing, Optional Name As String = "")
+Friend Sub New_(IsHashed As Boolean, Optional col As Collection = Nothing, Optional Name As String = "", Optional OptionBaseLBound As Long = 1)
     'works as a wrapper and extends existing Collection
-    m_Name = Name: m_IsHashed = IsHashed: If Not Col Is Nothing Then Set m_Col = Col
+    m_Name = Name: m_IsHashed = IsHashed: If Not col Is Nothing Then Set m_Col = col
+    m_LowB = OptionBaseLBound - 1
 End Sub
 
 'Copy to MNew
@@ -40,8 +42,10 @@ Public Sub NewC(other As CCollection)
     Dim i As Long
     With other
         m_Name = .Name
-        For i = 1 To .Count
-            m_Col.Add .Item(i)
+        m_IsHashed = .IsHashed
+        m_LowB = .LowerBound
+        For i = .LLBound To .UUBound
+            m_Col.Add .Item(i + m_LowB)
         Next
     End With
 End Sub
@@ -213,6 +217,23 @@ Public Property Get Count() As Long
     Count = m_Col.Count
 End Property
 
+Private Function Index(ByVal i As Long) As Long
+    Index = i - m_LowB
+End Function
+
+Public Property Get LLBound() As Long
+    LLBound = 1 + m_LowB
+End Property
+
+Public Property Get UUBound() As Long
+    'gibt den Upper Bound, die oberste Schranke, den größten Index des internen Arrays zurück
+    UUBound = m_Col.Count + m_LowB
+End Property
+
+'Public Property Get UpperBound() As Long
+'    UpperBound = Me.Count - m_OptBase
+'End Property
+
 Public Function IndexFromObject(Obj As Object) As Long
     Dim i As Long, v, o As Object
     For Each v In m_Col
@@ -233,16 +254,28 @@ Public Sub Insert(ByVal Index As Long, ValueOrObj)
     'insert always means "Befor" the Index
     'you can insert before the first element to get a new first element
     'if you want to insert after the last element just use Add
+    Index = Index(Index)
     Me.Add ValueOrObj, , Index
     'm_Col.Add ValueOrObj, , Index
     'm_Version = m_Version + CDec(1)
 End Sub
 
 Public Property Get Item(IndexOrKey)
-    If IsObject(m_Col.Item(IndexOrKey)) Then
-        Set Item = m_Col.Item(IndexOrKey)
+    If VarType(IndexOrKey) = vbString Then
+        'IndexOrKey is a Key!
+        If IsObject(m_Col.Item(IndexOrKey)) Then
+            Set Item = m_Col.Item(IndexOrKey)
+        Else
+            Item = m_Col.Item(IndexOrKey)
+        End If
     Else
-        Item = m_Col.Item(IndexOrKey)
+        'IndexOrKey is a numeric Index!
+        Dim i As Long: i = Index(IndexOrKey)
+        If IsObject(m_Col.Item(i)) Then
+            Set Item = m_Col.Item(i)
+        Else
+            Item = m_Col.Item(i)
+        End If
     End If
 End Property
 

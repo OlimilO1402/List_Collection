@@ -19,6 +19,14 @@ Begin VB.Form FMain
    ScaleHeight     =   7575
    ScaleWidth      =   14655
    StartUpPosition =   3  'Windows-Standard
+   Begin VB.CommandButton BtnTestLBound 
+      Caption         =   "Option Base X"
+      Height          =   375
+      Left            =   10920
+      TabIndex        =   12
+      Top             =   120
+      Width           =   1815
+   End
    Begin VB.CommandButton BtnObjsSort 
       Caption         =   "Sort"
       Height          =   375
@@ -129,6 +137,22 @@ Private m_n   As Long
 Private m_ColOfDecs As CCollection
 Private m_ColOfStrs As CCollection
 Private m_ColOfObjs As CCollection
+
+Private Sub BtnTestLBound_Click()
+    Dim col As CCollection: Set col = MNew.CCollection(False, , , -1)
+    col.Add 123456
+    col.Add 234567
+    col.Add 345678
+    
+    Dim i As Long
+    Dim ll As Long: ll = col.LLBound
+    Dim uu As Long: uu = col.UUBound
+    Debug.Print "Col.LBound = " & ll & "; Col.UBound = " & uu
+    For i = ll To uu
+        Debug.Print " i =" & i & " col.Item(i) = " & col.Item(i)
+    Next
+    
+End Sub
 
 Private Sub Form_Load()
     Randomize Timer
