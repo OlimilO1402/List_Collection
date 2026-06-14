@@ -1,6 +1,6 @@
 VERSION 5.00
 Begin VB.Form FMain 
-   Caption         =   "Form1"
+   Caption         =   "FMain CCollection"
    ClientHeight    =   7575
    ClientLeft      =   120
    ClientTop       =   465
@@ -22,7 +22,7 @@ Begin VB.Form FMain
    Begin VB.CommandButton BtnColLBoundSort 
       Caption         =   "Sort"
       Height          =   375
-      Left            =   9600
+      Left            =   9720
       TabIndex        =   14
       Top             =   120
       Width           =   975
@@ -37,7 +37,7 @@ Begin VB.Form FMain
    Begin VB.CommandButton BtnTestLBound 
       Caption         =   "Option Base X"
       Height          =   375
-      Left            =   8040
+      Left            =   8160
       TabIndex        =   12
       Top             =   120
       Width           =   1575
@@ -45,7 +45,7 @@ Begin VB.Form FMain
    Begin VB.CommandButton BtnObjsSort 
       Caption         =   "Sort"
       Height          =   375
-      Left            =   13680
+      Left            =   13800
       TabIndex        =   9
       Top             =   120
       Width           =   975
@@ -53,7 +53,7 @@ Begin VB.Form FMain
    Begin VB.CommandButton BtnStrsSort 
       Caption         =   "Sort"
       Height          =   375
-      Left            =   4320
+      Left            =   4440
       TabIndex        =   5
       Top             =   120
       Width           =   975
@@ -78,7 +78,7 @@ Begin VB.Form FMain
    Begin VB.CommandButton BtnObjsCreate 
       Caption         =   "Create"
       Height          =   375
-      Left            =   12720
+      Left            =   12840
       TabIndex        =   8
       Top             =   120
       Width           =   975
@@ -93,7 +93,7 @@ Begin VB.Form FMain
    Begin VB.CommandButton BtnStrsCreate 
       Caption         =   "Create"
       Height          =   375
-      Left            =   3360
+      Left            =   3480
       TabIndex        =   4
       Top             =   120
       Width           =   975
@@ -113,23 +113,32 @@ Begin VB.Form FMain
       Top             =   960
       Width           =   3375
    End
+   Begin VB.Label LblLBound 
+      AutoSize        =   -1  'True
+      Caption         =   " "
+      Height          =   255
+      Left            =   8160
+      TabIndex        =   15
+      Top             =   600
+      Width           =   4380
+   End
    Begin VB.Label Label1 
       AutoSize        =   -1  'True
       Caption         =   " "
       Height          =   255
-      Left            =   12720
+      Left            =   12840
       TabIndex        =   10
       Top             =   600
-      Width           =   4500
+      Width           =   4380
    End
    Begin VB.Label LblStrs 
       AutoSize        =   -1  'True
       Caption         =   " "
       Height          =   255
-      Left            =   3360
+      Left            =   3480
       TabIndex        =   6
       Top             =   600
-      Width           =   4500
+      Width           =   4380
    End
    Begin VB.Label LblDecs 
       AutoSize        =   -1  'True
@@ -155,6 +164,7 @@ Private m_ColOfObjs As CCollection
 Private m_ColBase   As CCollection
 
 Private Sub Form_Load()
+    Me.Caption = Me.Caption & " v" & App.Major & "." & App.Minor & "." & App.Revision & " - " & App.FileDescription
     Randomize Timer
     m_n = 1000
     BtnDecsCreate.ToolTipText = "Create " & m_n & " decimal numbers"
@@ -171,6 +181,8 @@ Private Sub Form_Resize()
     If W > 0 And H > 0 Then LstDecs.Move L, t, W, H
     L = L + W: W = LstStrs.Width
     If W > 0 And H > 0 Then LstStrs.Move L, t, W, H
+    L = L + W: W = LstLBound.Width
+    If W > 0 And H > 0 Then LstLBound.Move L, t, W, H
     L = L + W: W = Me.ScaleWidth - L
     If W > 0 And H > 0 Then Text1.Move L, t, W, H
 End Sub
@@ -300,7 +312,7 @@ Private Sub BtnTestLBound_Click()
     If Not IsNumeric(slb) Then MsgBox "Numeric!!": Exit Sub
     Dim lb As Long: lb = CLng(slb)
     Dim n As Long: n = 100
-    Set m_ColBase = MNew.CCollection(False, Name:="ColBase", OptionBaseLBound:=lb)
+    Set m_ColBase = MNew.CCollection(False, Name:="ColBaseX", OptionBaseLBound:=lb)
     Dim mr As VbMsgBoxResult: mr = MsgBox("Create " & n & " strings. LBound now is " & lb & vbCrLf & "Blick one element to edit.", vbInformation Or vbOKCancel)
     If mr = vbCancel Then Exit Sub
     Dim i As Long
@@ -311,6 +323,7 @@ Private Sub BtnTestLBound_Click()
     For i = m_ColBase.LLBound To m_ColBase.UUBound
         LstLBound.AddItem i & vbTab & m_ColBase.Item(i)
     Next
+    LblLBound.Caption = m_ColBase.ToStr(True)
 End Sub
 
 Private Sub LstLBound_Click()
