@@ -4,7 +4,7 @@ Begin VB.Form FMain
    ClientHeight    =   7575
    ClientLeft      =   120
    ClientTop       =   465
-   ClientWidth     =   14655
+   ClientWidth     =   17550
    BeginProperty Font 
       Name            =   "Segoe UI"
       Size            =   9.75
@@ -17,20 +17,35 @@ Begin VB.Form FMain
    Icon            =   "FMain.frx":0000
    LinkTopic       =   "Form1"
    ScaleHeight     =   7575
-   ScaleWidth      =   14655
+   ScaleWidth      =   17550
    StartUpPosition =   3  'Windows-Standard
+   Begin VB.CommandButton BtnColLBoundSort 
+      Caption         =   "Sort"
+      Height          =   375
+      Left            =   9600
+      TabIndex        =   14
+      Top             =   120
+      Width           =   975
+   End
+   Begin VB.ListBox LstLBound 
+      Height          =   6180
+      Left            =   8040
+      TabIndex        =   13
+      Top             =   960
+      Width           =   4695
+   End
    Begin VB.CommandButton BtnTestLBound 
       Caption         =   "Option Base X"
       Height          =   375
-      Left            =   10920
+      Left            =   8040
       TabIndex        =   12
       Top             =   120
-      Width           =   1815
+      Width           =   1575
    End
    Begin VB.CommandButton BtnObjsSort 
       Caption         =   "Sort"
       Height          =   375
-      Left            =   9000
+      Left            =   13680
       TabIndex        =   9
       Top             =   120
       Width           =   975
@@ -53,17 +68,17 @@ Begin VB.Form FMain
    End
    Begin VB.TextBox Text1 
       Height          =   6135
-      Left            =   8040
+      Left            =   12720
       MultiLine       =   -1  'True
       ScrollBars      =   3  'Beides
       TabIndex        =   11
       Top             =   960
-      Width           =   6615
+      Width           =   4695
    End
    Begin VB.CommandButton BtnObjsCreate 
       Caption         =   "Create"
       Height          =   375
-      Left            =   8040
+      Left            =   12720
       TabIndex        =   8
       Top             =   120
       Width           =   975
@@ -102,7 +117,7 @@ Begin VB.Form FMain
       AutoSize        =   -1  'True
       Caption         =   " "
       Height          =   255
-      Left            =   8040
+      Left            =   12720
       TabIndex        =   10
       Top             =   600
       Width           =   4500
@@ -137,22 +152,7 @@ Private m_n   As Long
 Private m_ColOfDecs As CCollection
 Private m_ColOfStrs As CCollection
 Private m_ColOfObjs As CCollection
-
-Private Sub BtnTestLBound_Click()
-    Dim col As CCollection: Set col = MNew.CCollection(False, , , -1)
-    col.Add 123456
-    col.Add 234567
-    col.Add 345678
-    
-    Dim i As Long
-    Dim ll As Long: ll = col.LLBound
-    Dim uu As Long: uu = col.UUBound
-    Debug.Print "Col.LBound = " & ll & "; Col.UBound = " & uu
-    For i = ll To uu
-        Debug.Print " i =" & i & " col.Item(i) = " & col.Item(i)
-    Next
-    
-End Sub
+Private m_ColBase   As CCollection
 
 Private Sub Form_Load()
     Randomize Timer
@@ -176,14 +176,16 @@ Private Sub Form_Resize()
 End Sub
 
 Private Sub BtnDecsCreate_Click()
-    Set m_ColOfDecs = MNew.CCollection(False)
+    Dim mr As VbMsgBoxResult: mr = MsgBox("Create " & m_n & " decimals" & vbCrLf & "Doubleclick one element to edit.", vbInformation Or vbOKCancel)
+    If mr = vbCancel Then Exit Sub
+    Set m_ColOfDecs = MNew.CCollection(False, Name:="ColOfDecs")
     Dim i As Long
     Dim d: d = CDec(1.23457890123457E+18)
     For i = 0 To m_n - 1
         m_ColOfDecs.Add CDec(CDec(Rnd) * d)
     Next
     m_ColOfDecs.ToListBox LstDecs
-    LblDecs.Caption = m_ColOfDecs.ToStr
+    LblDecs.Caption = m_ColOfDecs.ToStr(True)
 End Sub
 Private Sub BtnDecsSort_Click()
     If m_ColOfDecs Is Nothing Then Exit Sub
@@ -212,7 +214,9 @@ Private Sub LblDecs_Click()
 End Sub
 
 Private Sub BtnStrsCreate_Click()
-    Set m_ColOfStrs = MNew.CCollection(False)
+    Dim mr As VbMsgBoxResult: mr = MsgBox("Create " & m_n & " strings." & vbCrLf & "Doubleclick one element to edit.", vbInformation Or vbOKCancel)
+    If mr = vbCancel Then Exit Sub
+    Set m_ColOfStrs = MNew.CCollection(False, Name:="ColOfStrs")
     Dim i As Long
     Dim nam As String
     For i = 0 To m_n - 1
@@ -220,7 +224,7 @@ Private Sub BtnStrsCreate_Click()
         m_ColOfStrs.Add nam
     Next
     m_ColOfStrs.ToListBox LstStrs
-    LblStrs.Caption = m_ColOfStrs.ToStr
+    LblStrs.Caption = m_ColOfStrs.ToStr(True)
 End Sub
 Private Sub BtnStrsSort_Click()
     If m_ColOfStrs Is Nothing Then Exit Sub
@@ -247,7 +251,7 @@ Private Sub LstStrs_DblClick()
 End Sub
 
 Private Sub BtnObjsCreate_Click()
-    Set m_ColOfObjs = MNew.CCollection(True, , "Col")
+    Set m_ColOfObjs = MNew.CCollection(True, Name:="ColOfObjs")
     Dim i As Long
     Dim nam As String
     Dim Obj As CCollection
@@ -256,7 +260,7 @@ Private Sub BtnObjsCreate_Click()
         Set Obj = MNew.CCollection(True, , nam)
         m_ColOfObjs.Add Obj, Obj.Name
     Next
-    Label1.Caption = m_ColOfObjs.ToStr
+    Label1.Caption = m_ColOfObjs.ToStr(True)
     Text1.Text = m_ColOfObjs.Data_ToStr
 End Sub
 
@@ -275,4 +279,65 @@ Private Sub BtnObjsSort_Click()
 '    Next
     Text1.Text = s
 End Sub
+
+Private Sub TestLBound1()
+    Dim col As CCollection: Set col = MNew.CCollection(False, , , -1)
+    col.Add 123456
+    col.Add 234567
+    col.Add 345678
+    Dim i As Long
+    Dim ll As Long: ll = col.LLBound
+    Dim uu As Long: uu = col.UUBound
+    Debug.Print "Col.LBound = " & ll & "; Col.UBound = " & uu
+    For i = ll To uu
+        Debug.Print " i =" & i & " col.Item(i) = " & col.Item(i)
+    Next
+End Sub
+
+Private Sub BtnTestLBound_Click()
+    Dim slb As String: slb = InputBox("Define LBound of CCollection: ", "LBound?", -2)
+    If StrPtr(slb) = 0 Then Exit Sub
+    If Not IsNumeric(slb) Then MsgBox "Numeric!!": Exit Sub
+    Dim lb As Long: lb = CLng(slb)
+    Dim n As Long: n = 100
+    Set m_ColBase = MNew.CCollection(False, Name:="ColBase", OptionBaseLBound:=lb)
+    Dim mr As VbMsgBoxResult: mr = MsgBox("Create " & n & " strings. LBound now is " & lb & vbCrLf & "Blick one element to edit.", vbInformation Or vbOKCancel)
+    If mr = vbCancel Then Exit Sub
+    Dim i As Long
+    For i = 1 To n
+        m_ColBase.Add GetRandomName
+    Next
+    LstLBound.Clear
+    For i = m_ColBase.LLBound To m_ColBase.UUBound
+        LstLBound.AddItem i & vbTab & m_ColBase.Item(i)
+    Next
+End Sub
+
+Private Sub LstLBound_Click()
+
+    If m_ColBase Is Nothing Then Exit Sub
+    Dim li As Long: li = LstLBound.ListIndex
+    Dim i As Long: i = m_ColBase.LLBound + li
+    Dim s As String: s = m_ColBase.Item(i)
+    s = InputBox("Edit", "Edit", s)
+    If StrPtr(s) = 0 Then Exit Sub
+    m_ColBase.Item(i) = s
+    LstLBound.List(li) = i & vbTab & s
+'
+'    If m_ColOfStrs.Count = 0 Then Exit Sub
+'    Dim s As String: s = InputBox("Index?", "Index", CLng(Rnd * m_n))
+'
+'    Dim i As Long: i = m_ColBase.LLBound + LstLBound.ListIndex
+'    MsgBox "The element with index " & i & " is:" & vbCrLf & m_ColBase.Item(i)
+End Sub
+
+Private Sub BtnColLBoundSort_Click()
+    m_ColBase.Sort
+    Dim i As Long
+    LstLBound.Clear
+    For i = m_ColBase.LLBound To m_ColBase.UUBound
+        LstLBound.AddItem i & vbTab & m_ColBase.Item(i)
+    Next
+End Sub
+
 

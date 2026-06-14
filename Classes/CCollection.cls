@@ -17,7 +17,7 @@ Option Explicit 'om 2025-11-30 lines: 410; 2025-12-04 lines: 464;
 'the VB-Collection is 1-based and so is CCollection as we do not break with compatibility
 'Implements Collection 'nope
 Private m_Name      As String
-Private m_Col       As Collection 'Of Object/Variant
+Private m_Col       As VBA.Collection 'Of Object/Variant
 Private m_IsHashed  As Boolean
 Private m_Version   As Variant 'Decimal 'Incremented in every Add, Insert or Delete
 Private m_LowB      As Long
@@ -28,14 +28,15 @@ Private Sub Class_Initialize()
 End Sub
 
 Friend Sub New_(IsHashed As Boolean, Optional col As Collection = Nothing, Optional Name As String = "", Optional OptionBaseLBound As Long = 1)
-    'works as a wrapper and extends existing Collection
+    'works as a wrapper and extends existing VBA.Collection.
+    'The default LBound aka Option Base of a VBA.Collection is 1, and so is here, but now you are free to define other LBound as well
     m_Name = Name: m_IsHashed = IsHashed: If Not col Is Nothing Then Set m_Col = col
     m_LowB = OptionBaseLBound - 1
 End Sub
 
 'Copy to MNew
-'Public Function CCollection(ByVal IsHashed As Boolean, Optional Col As Collection = Nothing, Optional Name As String = "") As CCollection
-'    Set CCollection = New CCollection: CCollection.New_ IsHashed, Col, Name
+'Public Function CCollection(ByVal IsHashed As Boolean, Optional Col As Collection = Nothing, Optional Name As String = "", Optional OptionBaseLBound As Long = 1) As CCollection
+'    Set CCollection = New CCollection: CCollection.New_ IsHashed, Col, Name, OptionBaseLBound
 'End Function
 
 Public Sub NewC(other As CCollection)
@@ -43,7 +44,7 @@ Public Sub NewC(other As CCollection)
     With other
         m_Name = .Name
         m_IsHashed = .IsHashed
-        m_LowB = .LowerBound
+        m_LowB = .LLBound
         For i = .LLBound To .UUBound
             m_Col.Add .Item(i + m_LowB)
         Next
@@ -151,13 +152,13 @@ Public Function Add(Item, Optional Key, Optional Before, Optional After)
             m_Col.Add Item, Key, Before
         End If
     End If
-    m_Version = m_Version + CDec(1)
+    IncVersion
 End Function
 
 Public Function AddKey(Obj As Object) As Object
     ' the object needs to have a Public Function/PropertyGet Key As String
     Set AddKey = Obj: m_Col.Add Obj, Obj.Key
-    m_Version = m_Version + CDec(1)
+    IncVersion
 End Function
 
 Public Function AddOrGet(Obj As Object) As Object
@@ -175,7 +176,7 @@ Public Function TryAddObject(Obj As Object, ByVal Key As String) As Boolean
 Try: On Error GoTo Catch
     m_Col.Add Obj, Key
     TryAddObject = True
-    m_Version = m_Version + CDec(1)
+    IncVersion
 Catch: On Error GoTo 0
 End Function
 
@@ -190,12 +191,12 @@ Public Sub ChangeKey(OldIndexKey, NewKey As String)
     End If
     m_Col.Add Value, NewKey  'first add
     m_Col.Remove OldIndexKey 'then remove
-    m_Version = m_Version + CDec(1)
+    IncVersion
 End Sub
 
 Public Sub Clear()
     Class_Initialize
-    m_Version = m_Version + CDec(1)
+    IncVersion
 End Sub
 
 Public Function NewEnum() As IUnknown
@@ -217,8 +218,8 @@ Public Property Get Count() As Long
     Count = m_Col.Count
 End Property
 
-Private Function Index(ByVal i As Long) As Long
-    Index = i - m_LowB
+Private Function GetIndex(ByVal i As Long) As Long
+    GetIndex = i - m_LowB
 End Function
 
 Public Property Get LLBound() As Long
@@ -235,9 +236,9 @@ End Property
 'End Property
 
 Public Function IndexFromObject(Obj As Object) As Long
-    Dim i As Long, v, o As Object
-    For Each v In m_Col
-        Set o = v
+    Dim i As Long, V, o As Object
+    For Each V In m_Col
+        Set o = V
         If o.Key = Obj.Key Then
             IndexFromObject = i
             Exit Function
@@ -254,7 +255,7 @@ Public Sub Insert(ByVal Index As Long, ValueOrObj)
     'insert always means "Befor" the Index
     'you can insert before the first element to get a new first element
     'if you want to insert after the last element just use Add
-    Index = Index(Index)
+    Index = GetIndex(Index)
     Me.Add ValueOrObj, , Index
     'm_Col.Add ValueOrObj, , Index
     'm_Version = m_Version + CDec(1)
@@ -270,7 +271,7 @@ Public Property Get Item(IndexOrKey)
         End If
     Else
         'IndexOrKey is a numeric Index!
-        Dim i As Long: i = Index(IndexOrKey)
+        Dim i As Long: i = GetIndex(IndexOrKey)
         If IsObject(m_Col.Item(i)) Then
             Set Item = m_Col.Item(i)
         Else
@@ -285,10 +286,12 @@ Public Property Let Item(IndexOrKey, ValueOrObj)
         m_Col.Remove IndexOrKey
         m_Col.Add ValueOrObj, IndexOrKey
     ElseIf vtik = vbLong Or vtik = vbInteger Then
-        m_Col.Remove IndexOrKey
-        m_Col.Add ValueOrObj, , IndexOrKey
+        'IndexOrKey is a numeric Index!
+        Dim i As Long: i = GetIndex(IndexOrKey)
+        m_Col.Remove i
+        m_Col.Add ValueOrObj, , i
     End If
-    m_Version = m_Version + CDec(1)
+    IncVersion
 End Property
 
 Public Property Set Item(IndexOrKey, ValueOrObj As Object)
@@ -297,10 +300,12 @@ Public Property Set Item(IndexOrKey, ValueOrObj As Object)
         m_Col.Remove IndexOrKey
         m_Col.Add ValueOrObj, IndexOrKey
     ElseIf vtik = vbLong Or vtik = vbInteger Then
-        m_Col.Remove IndexOrKey
-        m_Col.Add ValueOrObj, , IndexOrKey
+        'IndexOrKey is a numeric Index!
+        Dim i As Long: i = GetIndex(IndexOrKey)
+        m_Col.Remove i
+        m_Col.Add ValueOrObj, , i
     End If
-    m_Version = m_Version + CDec(1)
+    IncVersion
 End Property
 
 Public Sub MoveUp(ByVal i As Long)
@@ -308,7 +313,7 @@ Public Sub MoveUp(ByVal i As Long)
     Dim c As Long: c = m_Col.Count
     If i <= 1 Or c < i Then Exit Sub
     SwapItems i, i - 1
-    m_Version = m_Version + CDec(1)
+    IncVersion
 End Sub
 
 Public Sub MoveUpKey(ByVal i As Long)
@@ -321,7 +326,7 @@ Public Sub MoveUpKey(ByVal i As Long)
     Dim Key1 As String: Key1 = Obj1.Key
     Dim Key2 As String: Key2 = Obj2.Key
     SwapItemsKey i1, Key1, i2, Key2
-    m_Version = m_Version + CDec(1)
+    IncVersion
 End Sub
 
 Public Sub MoveDown(ByVal i As Long)
@@ -342,7 +347,7 @@ Public Sub MoveDownKey(ByVal i As Long)
     Dim Key1 As String: Key1 = Obj1.Key
     Dim Key2 As String: Key2 = Obj2.Key
     SwapItemsKey i1, Key1, i2, Key2
-    m_Version = m_Version + CDec(1)
+    IncVersion
 End Sub
 
 Public Function Remove(IndexOrKey)
@@ -368,7 +373,7 @@ Public Sub SwapItems(ByVal i1 As Long, ByVal i2 As Long)
     Else
         m_Col.Add Obj1
     End If
-    m_Version = m_Version + CDec(1)
+    IncVersion
 End Sub
 
 Public Sub SwapItemsKey(ByVal i1 As Long, ByVal Key1 As String, _
@@ -383,21 +388,29 @@ Public Sub SwapItemsKey(ByVal i1 As Long, ByVal Key1 As String, _
     Dim Obj2: If IsObject(m_Col.Item(Key2)) Then Set Obj2 = m_Col.Item(Key2) Else Obj2 = m_Col.Item(Key2)
     m_Col.Remove Key2: m_Col.Add Obj2, Key2, i1
     m_Col.Remove Key1: m_Col.Add Obj1, Key1, i1
-    m_Version = m_Version + CDec(1)
+    IncVersion
 End Sub
 
-Public Sub ToListBox(aLB As ListBox, Optional ByVal addEmptyLineFirst As Boolean = False, Optional ByVal doPtrToItemData As Boolean = False)
+#If VBA7 Then
+    Public Sub ToListBox(aLB As MSForms.ListBox, Optional ByVal addEmptyLineFirst As Boolean = False, Optional ByVal doPtrToItemData As Boolean = False)
+#Else
+    Public Sub ToListBox(aLB As ListBox, Optional ByVal addEmptyLineFirst As Boolean = False, Optional ByVal doPtrToItemData As Boolean = False)
+#End If
     ToListCtrl aLB, addEmptyLineFirst, doPtrToItemData
 End Sub
 
-Public Sub ToComboBox(aCB As ComboBox, Optional ByVal addEmptyLineFirst As Boolean = False, Optional ByVal doPtrToItemData As Boolean = False)
+#If VBA7 Then
+    Public Sub ToComboBox(aCB As MSForms.ComboBox, Optional ByVal addEmptyLineFirst As Boolean = False, Optional ByVal doPtrToItemData As Boolean = False)
+#Else
+    Public Sub ToComboBox(aCB As ComboBox, Optional ByVal addEmptyLineFirst As Boolean = False, Optional ByVal doPtrToItemData As Boolean = False)
+#End If
     ToListCtrl aCB, addEmptyLineFirst, doPtrToItemData
 End Sub
 
 Public Sub ToListCtrl(ComboBoxOrListBox, Optional ByVal addEmptyLineFirst As Boolean = False, Optional ByVal doPtrToItemData As Boolean = False)
     Dim i As Long, c As Long: c = m_Col.Count: If c = 0 Then Exit Sub
     Dim vt As VbVarType: vt = VarType(m_Col.Item(1))
-    Dim v, Obj As Object
+    Dim V, Obj As Object
     With ComboBoxOrListBox
         If .ListCount Then .Clear
         If addEmptyLineFirst Then .AddItem vbNullString
@@ -432,13 +445,13 @@ Public Function ToStr(Optional ByVal isLong As Boolean = False) As String
 End Function
 
 Public Function Data_ToStr() As String 'Col As Collection) As String
-    Dim s As String, v, Obj As Object
-    For Each v In m_Col
-        If IsObject(v) Then
-            Set Obj = v
+    Dim s As String, V, Obj As Object
+    For Each V In m_Col
+        If IsObject(V) Then
+            Set Obj = V
             s = s & Obj.ToStr & vbCrLf
         Else
-            s = s & CStr(v) & vbCrLf
+            s = s & CStr(V) & vbCrLf
         End If
     Next
     Data_ToStr = s
@@ -448,6 +461,9 @@ Public Property Get Version() As Variant 'As Decimal
     Version = m_Version
 End Property
 
+Private Sub IncVersion()
+    m_Version = m_Version + CDec(1)
+End Sub
 ' Sort:
 Public Sub Sort(Optional SortDirectionDown As Boolean = False)
     m_SortDirUp = Not SortDirectionDown
